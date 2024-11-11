@@ -32,6 +32,10 @@ class Server:
     def formatted_member_count(self):
         return "1 member" if (num_clients := len(self.clients)) == 1 else f"{num_clients} members"
 
+    @property
+    def known_usernames(self):
+        return {joining_msg.get("data") for joining_msg in self.clients.values()}
+
     @staticmethod
     def decode_message(message: Message):
         return message["data"].decode()
@@ -116,6 +120,13 @@ class Server:
             return
 
         joining_username = self.decode_message(connecting_message)
+        if not self.validate_username(joining_username):
+            self.send_message_to(
+                joining_socket, author=SERVER_USERNAME, message="ERR: The provided username is invalid."
+            )
+            joining_socket.close()
+            return
+
         print(f"INFO: Accepted new connection from {joining_client_address} (username: {joining_username}).")
 
         self.sockets.append(joining_socket)
@@ -176,6 +187,32 @@ class Server:
                     f"WARNING: Exception occurred in {self.format_peername(exception_socket.getpeername())} (username: {self.decode_message(self.clients[exception_socket])})."
                 )
                 self.handle_lost_connection(exception_socket)
+
+    def validate_username(self, username: str):
+        if not username:
+            # Username cannot be empty
+            return False
+
+        if username == SERVER_USERNAME:
+            # Username cannot mimic the server
+            return False
+
+        if any(char.isupper() for char in username):
+            # Usernames must be all lowercase
+            # NB: Can't use `username.islower()` since that's `False` for usernames with non-letters
+            # NB: This restriction may be a bug in Python -- `"3".islower() == False` but `"3a".islower() == True`.
+            return False
+
+        encoded_username = username.encode()
+        if len(encoded_username) > 16:
+            # Usernames must be at most 16 characters
+            return False
+
+        if encoded_username in self.known_usernames:
+            # Usernames must be unique
+            return False
+
+        return True
 
 
 if __name__ == "__main__":

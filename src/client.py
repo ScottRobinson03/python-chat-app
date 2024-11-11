@@ -22,8 +22,7 @@ class KeyboardThread(threading.Thread):
     def run(self):
         while True:
             if self.username is None:
-                if not (username := input("Username: ").lower()) or len(username.encode()) > 16 or username == "server":
-                    print("WARNING: Invalid username.")
+                if not (username := input("Username: ").lower()):
                     continue
                 self.username = username
 
@@ -54,7 +53,7 @@ class Client:
                 while True:
                     timestamp_header = self.client_socket.recv(HEADER_LENGTH)
                     if not len(timestamp_header):
-                        print("WARNING: Connection closed by the server (no timestamp header found).")
+                        print("WARNING: Connection closed by the server.")
                         sys.exit()
                     timestamp_length = int(timestamp_header.decode())
                     timestamp = int(self.client_socket.recv(timestamp_length).decode())
@@ -76,7 +75,7 @@ class Client:
                 if e.errno not in {errno.EAGAIN, errno.EWOULDBLOCK}:
                     print("Unexpected Reading Error:")
                     traceback.print_exception(e)
-                    sys.exit()
+                    sys.exit(1)
                 continue
 
             except Exception as e:
