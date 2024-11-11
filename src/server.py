@@ -55,6 +55,7 @@ class Server:
 
     @staticmethod
     def receive_message(client_socket: socket.socket) -> Message | Literal[False]:
+        client_socket.settimeout(10)
         try:
             message_header = client_socket.recv(HEADER_LENGTH)
             if not message_header:
@@ -62,7 +63,17 @@ class Server:
 
             message_length = int(message_header.decode())
             return {"data": client_socket.recv(message_length), "header": message_header}
-        except Exception:
+        except socket.timeout:
+            print(
+                f"INFO: Timed out when attempting to establish connection with {Server.format_peername(client_socket.getpeername())}"
+            )
+            Server.send_message_to(
+                client_socket, author=SERVER_USERNAME, message="\nERR: timed out whilst waiting for username"
+            )
+            client_socket.close()
+            return False
+        except Exception as e:
+            print(e)
             print(f"WARNING: Client {Server.format_peername(client_socket.getpeername())} closed connection.")
             return False
 
@@ -116,7 +127,6 @@ class Server:
 
         connecting_message = self.receive_message(joining_socket)
         if connecting_message is False:
-            print(f"INFO: Failed to establish connection with {joining_client_address}.")
             return
 
         joining_username = self.decode_message(connecting_message)

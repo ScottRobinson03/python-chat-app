@@ -69,7 +69,13 @@ class Client:
                     message_length = int(message_header.decode())
                     message = self.client_socket.recv(message_length).decode()
 
-                    print(f"{datetime.datetime.fromtimestamp(timestamp)}: {username} > {message}")
+                    if message.startswith("\n"):
+                        message = message[1:]
+                        prefix = "\n"
+                    else:
+                        prefix = ""
+
+                    print(f"{prefix}{datetime.datetime.fromtimestamp(timestamp)}: {username} > {message}")
 
             except IOError as e:
                 if e.errno not in {errno.EAGAIN, errno.EWOULDBLOCK}:
