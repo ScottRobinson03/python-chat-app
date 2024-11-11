@@ -6,6 +6,7 @@ import threading
 import traceback
 
 from src.constants import HEADER_LENGTH
+from src.server import Server
 
 IP = "127.0.0.1"
 PORT = 5001
@@ -26,14 +27,14 @@ class KeyboardThread(threading.Thread):
                     continue
                 self.username = username
 
-                username_header = f"{len(self.username):<{HEADER_LENGTH}}".encode()
+                username_header = Server.generate_message_header(self.username)
                 self.client_socket.send(username_header + self.username.encode())
                 continue
 
             message = input("")
             if message:
-                message_header = f"{len(message):<{HEADER_LENGTH}}".encode()
                 encoded_message = message.encode()
+                message_header = Server.generate_message_header(encoded_message)
                 self.client_socket.send(message_header + encoded_message)
 
 
