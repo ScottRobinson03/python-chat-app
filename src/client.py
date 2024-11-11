@@ -22,7 +22,7 @@ class KeyboardThread(threading.Thread):
     def run(self):
         while True:
             if self.username is None:
-                if not (username := input("Username: ").lower()) or len(username) > 16 or username == "server":
+                if not (username := input("Username: ").lower()) or len(username.encode()) > 16 or username == "server":
                     print("WARNING: Invalid username.")
                     continue
                 self.username = username

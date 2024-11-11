@@ -42,6 +42,11 @@ class Server:
 
     @staticmethod
     def generate_message_header(message: str | bytes):
+        if isinstance(message, str):
+            # We must encode the message before getting the length, since the length may change when encoding
+            # E.g. len("😀") == 1 but len("😀".encode()) == 4
+            message = message.encode()
+
         return f"{len(message):<{HEADER_LENGTH}}".encode()
 
     @staticmethod
