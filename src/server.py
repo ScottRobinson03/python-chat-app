@@ -1,5 +1,6 @@
 import select
 import socket
+import time
 from typing import Literal, TypedDict
 
 from src.constants import HEADER_LENGTH, SERVER_USERNAME
@@ -22,8 +23,8 @@ class Server:
 
         print(f"INFO: Server started on {IP}:{PORT}.")
 
-        self.sockets = [self.server_socket]
-        self.clients = {}
+        self.sockets: list[socket.socket] = [self.server_socket]
+        self.clients: dict[socket.socket, Message] = {}
 
         self.listen()
 
@@ -52,6 +53,34 @@ class Server:
             print(f"WARNING: Client {Server.format_peername(client_socket.getpeername())} closed connection.")
             return False
 
+    @staticmethod
+    def send_message_to(recipient: socket.socket, *, author: str | Message, message: str | Message):
+        current_timestamp = str(int(time.time())).encode()
+        current_timestamp_header = Server.generate_message_header(current_timestamp)
+
+        if isinstance(author, str):
+            encoded_author = author.encode()
+            author_header = Server.generate_message_header(encoded_author)
+        else:
+            encoded_author = author["data"]
+            author_header = author["header"]
+
+        if isinstance(message, str):
+            encoded_message = message.encode()
+            message_header = Server.generate_message_header(encoded_message)
+        else:
+            encoded_message = message["data"]
+            message_header = message["header"]
+
+        recipient.send(
+            current_timestamp_header
+            + current_timestamp
+            + author_header
+            + encoded_author
+            + message_header
+            + encoded_message
+        )
+
     def get_pending_messages(self) -> tuple[list[socket.socket], list[socket.socket]]:
         read_sockets, _, exception_sockets = select.select(self.sockets, [], self.sockets)
         return read_sockets, exception_sockets
@@ -65,12 +94,9 @@ class Server:
         self.sockets.remove(lost_socket)
         del self.clients[lost_socket]
 
+        message = f"{lost_username} has left the chat."
         for client_socket in self.clients:
-            message = f"{lost_username} has left the chat.".encode()
-            message_header = self.generate_message_header(message)
-            client_socket.send(
-                self.generate_message_header(SERVER_USERNAME) + SERVER_USERNAME.encode() + message_header + message
-            )
+            self.send_message_to(client_socket, author=SERVER_USERNAME, message=message)
 
     def handle_new_connection(self, joining_socket: socket.socket):
         joining_client_address = self.format_peername(joining_socket.getpeername())
@@ -87,10 +113,8 @@ class Server:
         self.clients[joining_socket] = connecting_message
 
         # Send a welcome message to the new user
-        welcome_message = f"Welcome to the chat, {joining_username}!".encode()
-        welcome_header = self.generate_message_header(welcome_message)
-        joining_socket.send(
-            self.generate_message_header(SERVER_USERNAME) + SERVER_USERNAME.encode() + welcome_header + welcome_message
+        self.send_message_to(
+            joining_socket, author=SERVER_USERNAME, message=f"Welcome to the chat, {joining_username}!"
         )
 
         # Announce the new user to all other users
@@ -98,10 +122,8 @@ class Server:
             if client_socket == joining_socket:
                 continue
 
-            message = f"{joining_username} has joined the chat.".encode()
-            message_header = self.generate_message_header(message)
-            client_socket.send(
-                self.generate_message_header(SERVER_USERNAME) + SERVER_USERNAME.encode() + message_header + message
+            self.send_message_to(
+                client_socket, author=SERVER_USERNAME, message=f"{joining_username} has joined the chat."
             )
 
     def listen(self):
@@ -127,18 +149,14 @@ class Server:
                     print(
                         f"CHAT: Received message from {self.format_peername(notified_socket.getpeername())}: {self.decode_message(message)}"
                     )
+
+                    # Forward message to all other chat clients/members
                     for client_socket in self.clients:
                         if client_socket == notified_socket:
                             # Has already received this message, so don't send again
                             continue
 
-                        # Send the author of the message and the message itself
-                        client_socket.send(
-                            user_join_message["header"]
-                            + user_join_message["data"]
-                            + message["header"]
-                            + message["data"]
-                        )
+                        self.send_message_to(client_socket, author=user_join_message, message=message)
 
             for exception_socket in exception_sockets:
                 print(
