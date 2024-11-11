@@ -28,6 +28,10 @@ class Server:
 
         self.listen()
 
+    @property
+    def formatted_member_count(self):
+        return "1 member" if (num_clients := len(self.clients)) == 1 else f"{num_clients} members"
+
     @staticmethod
     def decode_message(message: Message):
         return message["data"].decode()
@@ -94,7 +98,7 @@ class Server:
         self.sockets.remove(lost_socket)
         del self.clients[lost_socket]
 
-        message = f"{lost_username} has left the chat."
+        message = f"{lost_username} has left the chat. There's now {self.formatted_member_count} online."
         for client_socket in self.clients:
             self.send_message_to(client_socket, author=SERVER_USERNAME, message=message)
 
@@ -114,7 +118,9 @@ class Server:
 
         # Send a welcome message to the new user
         self.send_message_to(
-            joining_socket, author=SERVER_USERNAME, message=f"Welcome to the chat, {joining_username}!"
+            joining_socket,
+            author=SERVER_USERNAME,
+            message=f"Welcome to the chat, {joining_username}! There's currently {self.formatted_member_count} online.",
         )
 
         # Announce the new user to all other users
@@ -123,7 +129,9 @@ class Server:
                 continue
 
             self.send_message_to(
-                client_socket, author=SERVER_USERNAME, message=f"{joining_username} has joined the chat."
+                client_socket,
+                author=SERVER_USERNAME,
+                message=f"{joining_username} has joined the chat. There's currently {self.formatted_member_count} online.",
             )
 
     def listen(self):
