@@ -1,3 +1,4 @@
+import datetime
 import errno
 import socket
 import sys
@@ -50,11 +51,17 @@ class Client:
         while True:
             try:
                 while True:
-                    username_header = self.client_socket.recv(HEADER_LENGTH)
-                    if not len(username_header):
-                        print("WARNING: Connection closed by the server.")
+                    timestamp_header = self.client_socket.recv(HEADER_LENGTH)
+                    if not len(timestamp_header):
+                        print("WARNING: Connection closed by the server (no timestamp header found).")
                         sys.exit()
+                    timestamp_length = int(timestamp_header.decode())
+                    timestamp = int(self.client_socket.recv(timestamp_length).decode())
 
+                    username_header = self.client_socket.recv(HEADER_LENGTH)
+                    # if not len(username_header):
+                    #     print("WARNING: Connection closed by the server.")
+                    #     sys.exit()
                     username_length = int(username_header.decode())
                     username = self.client_socket.recv(username_length).decode()
 
@@ -62,7 +69,7 @@ class Client:
                     message_length = int(message_header.decode())
                     message = self.client_socket.recv(message_length).decode()
 
-                    print(f"{username} > {message}")
+                    print(f"{datetime.datetime.fromtimestamp(timestamp)}: {username} > {message}")
 
             except IOError as e:
                 if e.errno not in {errno.EAGAIN, errno.EWOULDBLOCK}:
