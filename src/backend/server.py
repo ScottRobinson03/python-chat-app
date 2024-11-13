@@ -3,7 +3,7 @@ import socket
 import time
 from typing import Literal, TypedDict
 
-from src.constants import HEADER_LENGTH, SERVER_USERNAME
+from src.backend.constants import HEADER_LENGTH, SERVER_USERNAME
 
 IP = "127.0.0.1"
 PORT = 5001

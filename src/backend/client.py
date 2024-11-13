@@ -5,8 +5,8 @@ import sys
 import threading
 import traceback
 
-from src.constants import HEADER_LENGTH
-from src.server import Server
+from src.backend.constants import HEADER_LENGTH
+from src.backend.server import Server
 
 IP = "127.0.0.1"
 PORT = 5001
