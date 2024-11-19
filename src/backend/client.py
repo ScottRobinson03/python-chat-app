@@ -1,4 +1,3 @@
-import datetime
 import errno
 import socket
 import sys
@@ -39,25 +38,21 @@ class Client:
                     timestamp_length = int(timestamp_header.decode())
                     timestamp = int(self.client_socket.recv(timestamp_length).decode())
 
-                    username_header = self.client_socket.recv(HEADER_LENGTH)
+                    author_header = self.client_socket.recv(HEADER_LENGTH)
                     # if not len(username_header):
                     #     print("WARNING: Connection closed by the server.")
                     #     sys.exit()
-                    username_length = int(username_header.decode())
-                    username = self.client_socket.recv(username_length).decode()
+                    username_length = int(author_header.decode())
+                    author = self.client_socket.recv(username_length).decode()
 
                     message_header = self.client_socket.recv(HEADER_LENGTH)
                     message_length = int(message_header.decode())
                     message = self.client_socket.recv(message_length).decode()
 
-                    if message.startswith("\n"):
-                        message = message[1:]
-                        prefix = "\n"
-                    else:
-                        prefix = ""
-
                     self.app.message_signal.emit(
-                        f"{prefix}{datetime.datetime.fromtimestamp(timestamp)}: {username} > {message}"
+                        timestamp,
+                        author,
+                        message,
                     )
 
             except IOError as e:

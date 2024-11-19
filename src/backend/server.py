@@ -68,7 +68,7 @@ class Server:
                 f"INFO: Timed out when attempting to establish connection with {Server.format_peername(client_socket.getpeername())}"
             )
             Server.send_message_to(
-                client_socket, author=SERVER_USERNAME, message="\nERR: timed out whilst waiting for username"
+                client_socket, author=SERVER_USERNAME, message="ERR: timed out whilst waiting for username"
             )
             client_socket.close()
             return False

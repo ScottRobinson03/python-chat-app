@@ -1,9 +1,19 @@
+import datetime
 import threading
 import sys
 
-from PySide6.QtCore import Signal, Slot
-from PySide6.QtWidgets import QApplication, QMainWindow, QInputDialog, QVBoxLayout, QWidget
-
+from PySide6.QtCore import Qt, Signal, Slot
+from PySide6.QtGui import QColor
+from PySide6.QtWidgets import (
+    QApplication,
+    QInputDialog,
+    QLabel,
+    QMainWindow,
+    QHBoxLayout,
+    QVBoxLayout,
+    QWidget,
+    QLayout,
+)
 
 from src.backend.client import Client
 
@@ -23,8 +33,38 @@ class ClientThread(threading.Thread):
         self.client.listen()
 
 
+class Message(QWidget):
+    def __init__(self, timestamp: int, author: str, content: str, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        layout = QVBoxLayout()
+
+        timestamp_label = QLabel(datetime.datetime.fromtimestamp(timestamp).isoformat())
+        author_label = QLabel(author)
+        content_label = QLabel(content)
+
+        header_layout = QVBoxLayout()
+
+        header_layout = QHBoxLayout()
+        header_layout.addWidget(author_label, alignment=Qt.AlignmentFlag.AlignLeft)
+        header_layout.addWidget(timestamp_label, alignment=Qt.AlignmentFlag.AlignRight)
+
+        layout.addLayout(header_layout)
+        layout.addWidget(content_label)
+
+        layout.setSizeConstraint(QLayout.SizeConstraint.SetFixedSize)
+
+        self.setLayout(layout)
+
+        self.setAutoFillBackground(True)
+
+        p = self.palette()
+        p.setColor(self.backgroundRole(), QColor.fromRgb(140, 179, 184))
+        self.setPalette(p)
+
+
 class MainWindow(QMainWindow):
-    message_signal = Signal(str)
+    message_signal = Signal(int, str, str)
 
     def __init__(self):
         super().__init__()
@@ -39,22 +79,30 @@ class MainWindow(QMainWindow):
         self.username_input.setLabelText("Username")
         self.username_input.accepted.connect(self.username_input_submitted)
 
-        layout = QVBoxLayout()
-        layout.addWidget(self.username_input)
+        self.layout_ = QVBoxLayout()
+        self.layout_.addWidget(self.username_input, alignment=Qt.AlignmentFlag.AlignCenter)
 
         widget = QWidget()
-        widget.setLayout(layout)
+        widget.setLayout(self.layout_)
+
+        widget.setAutoFillBackground(True)
+        p = widget.palette()
+        p.setColor(widget.backgroundRole(), QColor.fromRgb(103, 134, 135))
+        widget.setPalette(p)
 
         self.setCentralWidget(widget)
 
     @Slot(str)
-    def on_message(self, msg):
+    def on_message(self, timestamp: int, author: str, msg: str):
         assert self.client_thread is not None, "must have client_thread attr set in order to receive messages"
         assert (
             self.client_thread.client is not None
         ), "must have client attr set on client_thread in order to receive messages"
 
         print(f"{self.client_thread.client.username.decode()} received the following message: {msg}")
+
+        message = Message(timestamp, author, msg)
+        self.layout_.addWidget(message, alignment=Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop)
 
     def username_input_submitted(self):
         if self.client_thread is not None:
@@ -63,9 +111,9 @@ class MainWindow(QMainWindow):
         if not (username := self.username_input.textValue()):
             return
 
-        print(repr(username))
         self.client_thread = ClientThread(username, self)
-        print(f"created client for {username}")
+        print(f"created client for {username!r}")
+        self.layout_.removeWidget(self.username_input)
 
 
 if __name__ == "__main__":
